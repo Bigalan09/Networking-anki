@@ -1,0 +1,52 @@
+name: Release Anki Decks
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Validate flashcard content
+        run: python scripts/validate_cards.py --verbose
+
+      - name: Build Anki decks
+        run: python scripts/build_anki.py --output output --combined
+
+      - name: List build artifacts
+        run: ls -lh output/
+
+      - name: Create GitHub Release with deck artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Networking Anki Decks ${{ github.ref_name }}"
+          body: |
+            ## Networking Anki Flashcard Decks
+
+            Download the `.apkg` files below and import them directly into [Anki](https://apps.ankiweb.net/).
+
+            ### Included decks
+            - One deck per category (e.g. `01-networking-fundamentals.apkg`)
+            - `networking-all.apkg` — combined deck with every card
+          files: output/*.apkg
+          fail_on_unmatched_files: true
